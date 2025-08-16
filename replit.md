@@ -122,3 +122,83 @@ python batch_process_cli.py samples output_dir --duration 10.0  # 10-second samp
 - **Effect Comparison**: Compare dry vs processed audio to hear effect changes
 - **Technique Validation**: Test AI detection accuracy on known guitar techniques
 - **Development Workflow**: Iterate on effects without needing real-time audio hardware
+
+## Enhanced AI Training System (Added August 2025)
+
+### Improved Technique Detection Training
+The system now includes comprehensive training tools to improve AI accuracy in distinguishing between guitar techniques, especially chugging vs pinch harmonics:
+
+- **Enhanced Synthetic Data**: More realistic audio generation that captures actual acoustic properties of techniques
+- **Real Recording Training**: Ability to train from real guitar recordings organized in folders
+- **Training Sample Collection**: Interactive recording tools to collect technique samples
+- **Model Evaluation**: Detailed performance analysis and feature importance
+
+### Training Commands
+
+#### Train with Improved Synthetic Data Only
+```bash
+python train_technique_model.py --synthetic-only
+```
+
+#### Train with Real WAV Recordings
+```bash
+# First, create the directory structure
+python train_technique_model.py --create-structure training_data
+
+# Add your WAV files to: training_data/chugging/, training_data/harmonic/, training_data/none/
+# Then train the model
+python train_technique_model.py --wav-data training_data
+```
+
+#### Train with Both Synthetic and Real Data
+```bash
+python train_technique_model.py --wav-data training_data --combined
+```
+
+### Recording Training Samples
+
+#### Interactive Recording (Recommended)
+```bash
+# List available audio input devices
+python collect_training_samples.py --list-devices
+
+# Start interactive recording session with keyboard controls
+python collect_training_samples.py --interactive --technique chugging --device 2
+python collect_training_samples.py --interactive --technique harmonic --device 2
+python collect_training_samples.py --interactive --technique none --device 2
+```
+
+#### Batch Recording
+```bash
+# Record 20 samples of 4 seconds each
+python collect_training_samples.py --batch --technique chugging --count 20 --duration 4.0
+```
+
+### Interactive Recording Controls
+- **SPACE**: Start/Stop recording
+- **ESC**: Exit recording session  
+- **D**: Delete last recording
+
+### Training Improvements
+The enhanced training system addresses the key acoustic differences between techniques:
+
+**Chugging Characteristics:**
+- Palm-muted attack patterns with sharp onset and quick decay
+- Limited harmonic content due to palm muting
+- Low frequency emphasis (80-200 Hz range)
+- Fret buzz and string noise from aggressive playing
+- Rhythmic patterns and percussive nature
+
+**Pinch Harmonic Characteristics:**  
+- High harmonic content with specific frequency nodes emphasized
+- Sharp attack followed by sustained decay
+- Squealing frequencies from harmonic series (2nd, 3rd, 5th, 7th, 12th frets)
+- Subtle vibrato and pitch bending
+- Extended sustain compared to chugging
+
+### Model Performance
+The enhanced model provides:
+- **Better Feature Extraction**: 23 different audio features optimized for guitar techniques
+- **Improved Classification**: RandomForest with 200 trees and balanced classes
+- **Real-time Evaluation**: Confusion matrix and feature importance analysis
+- **Validation**: Train/test split with detailed performance metrics

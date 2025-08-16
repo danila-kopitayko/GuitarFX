@@ -1,0 +1,12 @@
+{
+  "techniques": [
+    "none",
+    "chugging",
+    "harmonic"
+  ],
+  "feature_count": 24,
+  "sample_rate": 44100,
+  "window_size": 2048,
+  "model_type": "RandomForestClassifier",
+  "synthetic_samples_per_class": 200
+}
