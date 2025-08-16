@@ -130,13 +130,13 @@ class GuitarEffectsApp:
                 # Process one audio frame
                 self.audio_processor.process_frame()
                 
-                # Small sleep to prevent CPU overload
-                time.sleep(0.001)
+                # Small sleep to prevent CPU overload and allow GUI updates
+                time.sleep(0.005)
                 
             except Exception as e:
                 self.logger.error(f"Processing error: {e}")
                 # Continue processing despite errors
-                time.sleep(0.01)
+                time.sleep(0.05)
     
     def run(self):
         """Run the main application"""

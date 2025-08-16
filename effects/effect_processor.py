@@ -86,7 +86,12 @@ class EffectProcessor:
             self.technique_confidence = confidence
             return
         
-        self.logger.debug(f"Technique change: {self.current_technique} -> {technique} (confidence: {confidence:.2f})")
+        # Reduced logging frequency to prevent thread blocking
+        if hasattr(self, '_last_technique_log') and time.time() - self._last_technique_log < 1.0:
+            pass  # Skip logging if too frequent
+        else:
+            self.logger.debug(f"Technique change: {self.current_technique} -> {technique} (confidence: {confidence:.2f})")
+            self._last_technique_log = time.time()
         
         old_technique = self.current_technique
         self.current_technique = technique
@@ -131,7 +136,8 @@ class EffectProcessor:
             self.effects[effect_name].enable()
         
         self.active_effects.add(effect_name)
-        self.logger.debug(f"Starting fade-in for effect: {effect_name}")
+        # Reduce effect transition logging
+        pass  # self.logger.debug(f"Starting fade-in for effect: {effect_name}")
     
     def _start_effect_fade_out(self, effect_name: str):
         """Start fading out an effect"""
@@ -143,7 +149,8 @@ class EffectProcessor:
             self.effects[effect_name].disable()
             self.active_effects.discard(effect_name)
         
-        self.logger.debug(f"Starting fade-out for effect: {effect_name}")
+        # Reduce effect transition logging  
+        pass  # self.logger.debug(f"Starting fade-out for effect: {effect_name}")
     
     def process_audio(self, audio_data: np.ndarray) -> np.ndarray:
         """Process audio through active effects with crossfading"""
@@ -188,7 +195,7 @@ class EffectProcessor:
                 if fade_progress >= 1.0:
                     self.effect_states[effect_name] = 'on'
                     effect.enable()
-                    self.logger.debug(f"Fade-in complete for effect: {effect_name}")
+                    pass  # self.logger.debug(f"Fade-in complete for effect: {effect_name}")
                 
             elif state == 'fading_out':
                 # Fade out effect
@@ -207,7 +214,7 @@ class EffectProcessor:
                     self.effect_states[effect_name] = 'off'
                     effect.disable()
                     self.active_effects.discard(effect_name)
-                    self.logger.debug(f"Fade-out complete for effect: {effect_name}")
+                    pass  # self.logger.debug(f"Fade-out complete for effect: {effect_name}")
         
         return processed
     

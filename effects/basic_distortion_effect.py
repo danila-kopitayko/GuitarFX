@@ -119,11 +119,19 @@ class BasicDistortionEffect(BaseEffect):
     def _apply_tone_filter(self, audio_data: np.ndarray) -> np.ndarray:
         """Apply tone filtering"""
         try:
-            if hasattr(self, 'tone_b') and hasattr(self, 'tone_a'):
-                filtered = signal.lfilter(self.tone_b, self.tone_a, audio_data)
-                return filtered * self.tone_gain
-            else:
-                return audio_data
+            tone = self.parameters['tone']
+            # Simple tone control without complex filtering for better performance
+            if abs(tone - 0.5) > 0.1:
+                if tone > 0.5:
+                    # Boost highs with simple high-pass emphasis
+                    emphasis = (tone - 0.5) * 2.0
+                    return audio_data + np.diff(audio_data, prepend=audio_data[0]) * emphasis * 0.3
+                else:
+                    # Cut highs with simple low-pass
+                    smooth_factor = (0.5 - tone) * 0.5
+                    smoothed = np.convolve(audio_data, [smooth_factor, 1.0-smooth_factor], mode='same')
+                    return smoothed
+            return audio_data
         except Exception:
             return audio_data
     

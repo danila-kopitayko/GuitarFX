@@ -104,7 +104,7 @@ class AudioProcessor:
         if confidence >= min_confidence:
             # High confidence detection
             if self.current_technique != technique:
-                self.logger.info(f"Technique detected: {technique} (confidence: {confidence:.2%})")
+                self.logger.debug(f"Technique detected: {technique} (confidence: {confidence:.2%})")
                 self.current_technique = technique
                 self.technique_confidence = confidence
                 
@@ -136,9 +136,9 @@ class AudioProcessor:
         self.processing_times.append(processing_time)
         self.frame_count += 1
         
-        # Update stats every second
+        # Update stats every 5 seconds to reduce logging overhead
         current_time = time.time()
-        if current_time - self.last_stats_time >= 1.0:
+        if current_time - self.last_stats_time >= 5.0:
             self._log_performance_stats()
             self.last_stats_time = current_time
     
