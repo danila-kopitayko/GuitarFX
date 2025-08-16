@@ -80,3 +80,45 @@ The application uses a multi-threaded architecture to ensure real-time performan
 - **platform**: Platform detection for audio driver preferences and system-specific configurations
 - **json**: Configuration file persistence and settings management
 - **logging**: Comprehensive logging system with file rotation and multiple output targets
+
+## WAV File Processing (Added August 2025)
+
+### Batch Audio Processing
+The system now supports processing WAV audio files for easier testing and development:
+
+- **BatchAudioProcessor**: Core module for processing WAV files through the complete effects pipeline
+- **Command Line Interface**: `batch_process_cli.py` provides easy-to-use commands for WAV processing
+- **soundfile**: Added dependency for high-quality WAV file I/O operations
+
+### Available Commands
+
+#### Process Single WAV File
+```bash
+python batch_process_cli.py process input.wav output.wav
+python batch_process_cli.py process input.wav output.wav --technique chugging  # Force technique
+python batch_process_cli.py process input.wav output.wav --dry  # No effects, analysis only
+```
+
+#### Batch Process Directory
+```bash
+python batch_process_cli.py batch input_dir output_dir
+python batch_process_cli.py batch input_dir output_dir --technique harmonic
+```
+
+#### Analyze WAV File
+```bash
+python batch_process_cli.py analyze input.wav
+python batch_process_cli.py analyze input.wav --detailed  # Show timeline
+```
+
+#### Generate Test Samples
+```bash
+python batch_process_cli.py samples output_dir
+python batch_process_cli.py samples output_dir --duration 10.0  # 10-second samples
+```
+
+### Benefits for Testing
+- **Reproducible Testing**: Process the same audio file multiple times with different settings
+- **Effect Comparison**: Compare dry vs processed audio to hear effect changes
+- **Technique Validation**: Test AI detection accuracy on known guitar techniques
+- **Development Workflow**: Iterate on effects without needing real-time audio hardware

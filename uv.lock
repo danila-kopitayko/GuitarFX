@@ -844,6 +844,7 @@ dependencies = [
     { name = "pyaudio" },
     { name = "scikit-learn" },
     { name = "scipy" },
+    { name = "soundfile" },
 ]
 
 [package.metadata]
@@ -855,6 +856,7 @@ requires-dist = [
     { name = "pyaudio", specifier = ">=0.2.14" },
     { name = "scikit-learn", specifier = ">=1.7.1" },
     { name = "scipy", specifier = ">=1.16.1" },
+    { name = "soundfile", specifier = ">=0.13.1" },
 ]
 
 [[package]]
