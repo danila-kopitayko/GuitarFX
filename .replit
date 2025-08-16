@@ -1,2 +1,42 @@
+modules = ["python-3.11"]
 [agent]
 expertMode = true
+
+[nix]
+channel = "stable-25_05"
+packages = ["cairo", "ffmpeg-full", "freetype", "ghostscript", "glibcLocales", "gobject-introspection", "gtk3", "libsndfile", "libxcrypt", "pkg-config", "portaudio", "qhull", "tcl", "tk", "xsimd"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Guitar Effects Processor"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "guitar_effects_app"
+
+[[workflows.workflow]]
+name = "Guitar Effects Processor"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pip install numpy scipy matplotlib tkinter sounddevice librosa pyaudio && python main.py"
+
+[workflows.workflow.metadata]
+outputType = "vnc"
+
+[[workflows.workflow]]
+name = "guitar_effects_app"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pip install numpy scipy librosa pyaudio tkinter matplotlib threading queue && python main.py"
