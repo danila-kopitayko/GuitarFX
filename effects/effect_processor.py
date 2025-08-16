@@ -7,6 +7,7 @@ from typing import Dict, Optional, List
 import time
 
 from effects.distortion_effect import DistortionEffect
+from effects.basic_distortion_effect import BasicDistortionEffect
 from effects.broken_record_effect import BrokenRecordEffect
 from utils.logger import Logger
 
@@ -33,7 +34,7 @@ class EffectProcessor:
         self.technique_effects = {
             'chugging': ['distortion'],
             'harmonic': ['broken_record'],
-            'none': []
+            'none': ['basic_distortion']
         }
         
         # Crossfade parameters
@@ -51,10 +52,16 @@ class EffectProcessor:
     def _initialize_effects(self):
         """Initialize all available effects"""
         try:
-            # Create distortion effect
+            # Create distortion effect (cyberpunk-style for chugging)
             self.effects['distortion'] = DistortionEffect(
                 sample_rate=self.sample_rate,
                 **self.settings.get('effects.distortion', {})
+            )
+            
+            # Create basic distortion effect (gentle for normal playing)
+            self.effects['basic_distortion'] = BasicDistortionEffect(
+                sample_rate=self.sample_rate,
+                **self.settings.get('effects.basic_distortion', {})
             )
             
             # Create broken record effect
