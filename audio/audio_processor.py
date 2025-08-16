@@ -38,11 +38,19 @@ class AudioProcessor:
     def process_frame(self):
         """Process one audio frame through the complete pipeline"""
         start_time = time.time()
+        input_frame = None
         
         try:
             # Get input audio frame
             input_frame = self.audio_manager.get_input_frame()
             if input_frame is None:
+                # Check buffer health when no input available
+                if not self.buffer_manager.is_buffer_healthy():
+                    # Only log buffer underrun warning every few seconds to avoid spam
+                    current_time = time.time()
+                    if not hasattr(self, '_last_underrun_warning') or current_time - self._last_underrun_warning > 2.0:
+                        self.logger.debug(f"No audio input available - buffer level: {self.buffer_manager.get_buffer_level():.1f}%")
+                        self._last_underrun_warning = current_time
                 return
             
             # Add to processing buffer
@@ -56,6 +64,9 @@ class AudioProcessor:
             
             # Get windowed audio for analysis
             analysis_window = self.buffer_manager.get_analysis_window()
+            if analysis_window is None:
+                self._pass_through_audio(input_frame)
+                return
             
             # Detect playing technique
             technique, confidence = self.technique_detector.detect_technique(analysis_window)
@@ -77,7 +88,7 @@ class AudioProcessor:
             
         except Exception as e:
             self.logger.error(f"Frame processing error: {e}")
-            # Pass through original audio on error
+            # Pass through original audio on error if available
             if input_frame is not None:
                 self._pass_through_audio(input_frame)
     
@@ -93,7 +104,7 @@ class AudioProcessor:
         if confidence >= min_confidence:
             # High confidence detection
             if self.current_technique != technique:
-                self.logger.debug(f"Technique changed: {self.current_technique} -> {technique}")
+                self.logger.info(f"Technique detected: {technique} (confidence: {confidence:.2%})")
                 self.current_technique = technique
                 self.technique_confidence = confidence
                 

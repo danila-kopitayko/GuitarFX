@@ -54,13 +54,13 @@ class DistortionEffect(BaseEffect):
         mid_freq = np.clip(mid_freq, 0.001, 0.99)
         
         if tone > 0.5:
-            # Boost highs
-            boost_db = (tone - 0.5) * 12  # Up to 6dB boost
-            self.tone_b, self.tone_a = signal.iirpeak(mid_freq, Q=0.7, gain=boost_db)
+            # Boost highs - use peaking filter
+            Q = 0.7
+            self.tone_b, self.tone_a = signal.iirpeak(mid_freq, Q)
         else:
-            # Cut highs
-            cut_db = (0.5 - tone) * -12  # Up to -6dB cut
-            self.tone_b, self.tone_a = signal.iirnotch(mid_freq, Q=0.7, gain=cut_db)
+            # Cut highs - use notch filter 
+            Q = 0.7
+            self.tone_b, self.tone_a = signal.iirnotch(mid_freq, Q)
     
     def process(self, audio_data: np.ndarray) -> np.ndarray:
         """Process audio through cyberpunk distortion"""

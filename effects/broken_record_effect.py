@@ -90,7 +90,7 @@ class BrokenRecordEffect(BaseEffect):
         # Add some mid boost for vintage character
         mid_freq = 800 / nyquist
         mid_boost = vintage_amount * 3  # Up to 3dB boost
-        mid_b, mid_a = signal.iirpeak(mid_freq, Q=1.5, gain=mid_boost)
+        mid_b, mid_a = signal.iirpeak(mid_freq, Q=1.5)
         
         # Combine filters
         combined_b = np.convolve(self.vintage_b, mid_b)

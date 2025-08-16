@@ -24,6 +24,8 @@ class AudioManager:
         self.input_stream = None
         self.output_stream = None
         self.stream_active = False
+        self.test_mode = False
+        self.test_thread = None
         
         # Audio buffers
         self.input_buffer = queue.Queue(maxsize=10)
@@ -53,7 +55,7 @@ class AudioManager:
             for i in range(device_count):
                 device_info = self.pa.get_device_info_by_index(i)
                 
-                if device_info['maxInputChannels'] > 0:
+                if device_info.get('maxInputChannels', 0) > 0:
                     self.input_devices.append({
                         'index': i,
                         'name': device_info['name'],
@@ -61,7 +63,7 @@ class AudioManager:
                         'sample_rate': int(device_info['defaultSampleRate'])
                     })
                 
-                if device_info['maxOutputChannels'] > 0:
+                if device_info.get('maxOutputChannels', 0) > 0:
                     self.output_devices.append({
                         'index': i,
                         'name': device_info['name'],
@@ -174,27 +176,38 @@ class AudioManager:
             input_device = self.settings.get('audio.input_device', None)
             output_device = self.settings.get('audio.output_device', None)
             
-            # Start input stream
-            self.input_stream = self.pa.open(
-                format=self.format,
-                channels=self.channels,
-                rate=self.sample_rate,
-                input=True,
-                input_device_index=input_device,
-                frames_per_buffer=self.buffer_size,
-                stream_callback=self._input_callback
-            )
+            # Start input stream - handle device availability gracefully
+            try:
+                self.input_stream = self.pa.open(
+                    format=self.format,
+                    channels=self.channels,
+                    rate=self.sample_rate,
+                    input=True,
+                    input_device_index=input_device,
+                    frames_per_buffer=self.buffer_size,
+                    stream_callback=self._input_callback
+                )
+                self.logger.info(f"Input stream started on device {input_device}")
+            except Exception as e:
+                self.logger.warning(f"Could not open input device {input_device}: {e}")
+                self.logger.info("Starting in test mode with simulated guitar input")
+                self._start_test_input_stream()
             
             # Start output stream
-            self.output_stream = self.pa.open(
-                format=self.format,
-                channels=self.channels,
-                rate=self.sample_rate,
-                output=True,
-                output_device_index=output_device,
-                frames_per_buffer=self.buffer_size,
-                stream_callback=self._output_callback
-            )
+            try:
+                self.output_stream = self.pa.open(
+                    format=self.format,
+                    channels=self.channels,
+                    rate=self.sample_rate,
+                    output=True,
+                    output_device_index=output_device,
+                    frames_per_buffer=self.buffer_size,
+                    stream_callback=self._output_callback
+                )
+                self.logger.info(f"Output stream started on device {output_device}")
+            except Exception as e:
+                self.logger.warning(f"Could not open output device {output_device}: {e}")
+                self.logger.info("Audio output not available - running in input-only mode")
             
             self.stream_active = True
             self.logger.info("Audio streams started")
@@ -209,6 +222,10 @@ class AudioManager:
         """Stop audio streams"""
         try:
             self.stream_active = False
+            
+            # Stop test input if running
+            if hasattr(self, 'test_thread') and self.test_thread and self.test_thread.is_alive():
+                self.test_thread.join(timeout=1.0)
             
             if self.input_stream:
                 self.input_stream.stop_stream()
@@ -272,6 +289,91 @@ class AudioManager:
             'input_latency': self.input_stream.get_input_latency() if self.input_stream else 0,
             'output_latency': self.output_stream.get_output_latency() if self.output_stream else 0
         }
+    
+    def _start_test_input_stream(self):
+        """Start a test input stream with simulated guitar signal"""
+        import threading
+        import math
+        
+        self.test_mode = True
+        self.test_thread = threading.Thread(target=self._test_input_generator, daemon=True)
+        self.test_thread.start()
+    
+    def _test_input_generator(self):
+        """Generate test guitar-like signals for development/testing"""
+        import time
+        
+        sample_count = 0
+        test_techniques = ['none', 'chugging', 'harmonic']
+        current_technique = 0
+        technique_duration = 3.0  # seconds per technique
+        samples_per_technique = int(technique_duration * self.sample_rate)
+        
+        while self.stream_active:
+            try:
+                # Generate a buffer worth of samples
+                audio_data = np.zeros(self.buffer_size, dtype=np.float32)
+                
+                for i in range(self.buffer_size):
+                    t = sample_count / self.sample_rate
+                    
+                    # Switch techniques periodically
+                    technique_index = (sample_count // samples_per_technique) % len(test_techniques)
+                    technique = test_techniques[technique_index]
+                    
+                    # Generate different signals for each technique
+                    if technique == 'chugging':
+                        # Palm-muted low frequency chugging
+                        freq = 82.4  # Low E string
+                        signal = np.sin(2 * np.pi * freq * t) * 0.3
+                        # Add aggressive envelope
+                        envelope = max(0, 1 - (t % 0.2) * 5)  # Sharp attack, quick decay
+                        signal *= envelope
+                        # Add some harmonic distortion
+                        signal += 0.1 * np.sin(6 * np.pi * freq * t) * envelope
+                        
+                    elif technique == 'harmonic':
+                        # Pinch harmonics - high frequency content
+                        fundamental = 82.4
+                        # Emphasize 12th fret harmonic (octave)
+                        signal = 0.2 * np.sin(2 * np.pi * fundamental * 2 * t)
+                        # Add 5th harmonic for pinch harmonic character
+                        signal += 0.4 * np.sin(2 * np.pi * fundamental * 5 * t)
+                        # Quick decay envelope
+                        envelope = max(0, np.exp(-t % 1.0 * 3))
+                        signal *= envelope
+                        
+                    else:  # 'none' - clean guitar
+                        # Clean single notes or chords
+                        freq = 196.0  # G3
+                        signal = 0.4 * np.sin(2 * np.pi * freq * t)
+                        # Natural guitar decay
+                        envelope = max(0, np.exp(-t % 2.0 * 1.5))
+                        signal *= envelope
+                    
+                    # Add some noise to simulate real guitar pickup
+                    noise = np.random.normal(0, 0.02)
+                    audio_data[i] = signal + noise
+                    
+                    sample_count += 1
+                
+                # Put the generated data into the input buffer
+                try:
+                    self.input_buffer.put_nowait(audio_data)
+                except:
+                    # Drop if buffer full
+                    try:
+                        self.input_buffer.get_nowait()
+                        self.input_buffer.put_nowait(audio_data)
+                    except:
+                        pass
+                
+                # Sleep to match real-time audio rate
+                time.sleep(self.buffer_size / self.sample_rate)
+                
+            except Exception as e:
+                self.logger.error(f"Test input generator error: {e}")
+                time.sleep(0.1)
     
     def cleanup(self):
         """Clean up audio resources"""

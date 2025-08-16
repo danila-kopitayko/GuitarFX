@@ -38,6 +38,7 @@ class BufferManager:
         self.frames_added = 0
         self.frames_dropped = 0
         self.windows_extracted = 0
+        self._last_underrun_log = 0
         
         self.logger.debug(f"BufferManager initialized - window: {self.analysis_window_size}, hop: {self.hop_size}")
     
@@ -188,7 +189,12 @@ class BufferManager:
             
             # Buffer should not be too empty or too full
             if buffer_level < 10.0:
-                self.logger.warning(f"Buffer underrun: {buffer_level:.1f}%")
+                # Only log underrun warnings occasionally to prevent spam
+                import time
+                current_time = time.time()
+                if not hasattr(self, '_last_underrun_log') or current_time - self._last_underrun_log > 5.0:
+                    self.logger.warning(f"Buffer underrun: {buffer_level:.1f}%")
+                    self._last_underrun_log = current_time
                 return False
             
             if buffer_level > 95.0:
