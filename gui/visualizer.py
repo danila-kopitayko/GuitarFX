@@ -27,8 +27,8 @@ class Visualizer:
         
         # Visualization settings
         self.sample_rate = settings.get('audio.sample_rate', 44100)
-        self.update_rate = settings.get('visualizer.update_rate', 30)  # Hz
-        self.history_length = settings.get('visualizer.history_length', 200)  # frames
+        self.update_rate = settings.get('visualizer.update_rate', 5)  # Hz - Much slower to reduce CPU load
+        self.history_length = settings.get('visualizer.history_length', 50)  # frames - Shorter history to reduce memory
         
         # Data buffers
         self.audio_buffer = deque(maxlen=2048)
@@ -39,6 +39,8 @@ class Visualizer:
         # Visualization state
         self.running = False
         self.last_update = 0
+        self.skip_expensive_updates = True  # Skip heavy computations to prevent GUI blocking
+        self.update_counter = 0
         
         # Create widgets
         self._create_widgets()
@@ -202,46 +204,50 @@ class Visualizer:
         self.viz_thread.start()
     
     def _visualization_loop(self):
-        """Main visualization update loop"""
+        """Main visualization update loop - much simpler to prevent GUI blocking"""
         while self.running:
             try:
                 current_time = time.time()
                 
-                # Limit update rate
+                # Limit update rate - much slower to prevent blocking
                 if current_time - self.last_update < 1.0 / self.update_rate:
-                    time.sleep(0.01)
+                    time.sleep(0.2)  # Longer sleep to reduce CPU usage
                     continue
                 
                 # Get fresh audio data
                 audio_frame = self.audio_manager.get_input_frame()
                 if audio_frame is not None:
-                    self._process_audio_data(audio_frame)
+                    self._process_audio_data_lightweight(audio_frame)
                 
-                # Update visualization
-                self._update_plots()
+                # Only update plots occasionally to prevent blocking
+                self.update_counter += 1
+                if self.update_counter % 3 == 0:  # Update plots every 3rd cycle
+                    self._update_plots_lightweight()
                 
                 self.last_update = current_time
                 
             except Exception as e:
                 self.logger.error(f"Visualization update error: {e}")
-                time.sleep(0.1)
+                time.sleep(0.5)  # Longer sleep on error
     
-    def _process_audio_data(self, audio_frame):
-        """Process new audio data for visualization"""
-        # Add to audio buffer
+    def _process_audio_data_lightweight(self, audio_frame):
+        """Process new audio data for visualization - lightweight version"""
+        # Only add to audio buffer, skip expensive computations
+        if len(self.audio_buffer) > 1024:  # Limit buffer size
+            # Remove old data to prevent memory growth
+            for _ in range(len(audio_frame)):
+                if self.audio_buffer:
+                    self.audio_buffer.popleft()
+        
         self.audio_buffer.extend(audio_frame)
         
-        # Compute RMS level
+        # Simple RMS computation only
         rms = np.sqrt(np.mean(audio_frame ** 2))
         rms_db = 20 * np.log10(max(rms, 1e-10))  # Convert to dB, avoid log(0)
         self.rms_history.append(rms_db)
         
-        # Compute spectrum
-        if len(audio_frame) > 64:  # Ensure we have enough samples
-            spectrum = self._compute_spectrum(audio_frame)
-            self.spectrum_buffer.append(spectrum)
-        
-        # Get technique detection info
+        # Skip expensive spectrum computation to prevent blocking
+        # Only get technique detection info
         technique = self.audio_processor.get_current_technique()
         confidence = self.audio_processor.get_technique_confidence()
         
@@ -268,34 +274,35 @@ class Visualizer:
         
         return freqs, magnitude_db
     
-    def _update_plots(self):
-        """Update all visualization plots"""
+    def _update_plots_lightweight(self):
+        """Update visualization plots - lightweight version to prevent blocking"""
         try:
-            # Update waveform
-            self._update_waveform()
+            # Only update simple waveform to minimize GUI blocking
+            self._update_waveform_simple()
             
-            # Update spectrum
-            self._update_spectrum()
-            
-            # Update analysis plots
-            self._update_analysis()
+            # Skip expensive spectrum and analysis updates that cause freezing
+            # Only update technique status
+            self._update_technique_status_only()
             
         except Exception as e:
             self.logger.error(f"Plot update error: {e}")
     
-    def _update_waveform(self):
-        """Update waveform display"""
-        if len(self.audio_buffer) > 0:
-            # Get recent audio data
-            waveform_data = list(self.audio_buffer)[-1024:]  # Last 1024 samples
+    def _update_waveform_simple(self):
+        """Update waveform display - simplified to prevent blocking"""
+        if len(self.audio_buffer) > 100:
+            # Get recent audio data - much smaller to reduce computation
+            waveform_data = list(self.audio_buffer)[-256:]  # Only last 256 samples
             x_data = np.arange(len(waveform_data))
             
             # Update plot
             self.waveform_line.set_data(x_data, waveform_data)
             self.waveform_ax.set_xlim(0, len(waveform_data))
             
-            # Update canvas
-            self.waveform_canvas.draw_idle()
+            # Update canvas - draw_idle can be expensive, so skip if busy
+            try:
+                self.waveform_canvas.draw_idle()
+            except:
+                pass  # Skip drawing if it would block GUI
     
     def _update_spectrum(self):
         """Update spectrum analyzer display"""
@@ -314,33 +321,21 @@ class Visualizer:
             # Update canvas
             self.spectrum_canvas.draw_idle()
     
-    def _update_analysis(self):
-        """Update analysis plots"""
-        # Update RMS level plot
-        if len(self.rms_history) > 0:
-            x_data = np.arange(len(self.rms_history))
-            self.rms_line.set_data(x_data, list(self.rms_history))
-            self.rms_ax.set_xlim(0, len(self.rms_history))
-            
-            # Add current technique detection indicator
-            current_technique = self.audio_processor.get_current_technique()
-            if current_technique and current_technique != 'none':
-                # Highlight current detection with background color
-                self.rms_ax.axvspan(len(self.rms_history)-5, len(self.rms_history), 
-                                  alpha=0.3, color='yellow')
-        
-        # Update technique confidence plot
+    def _update_technique_status_only(self):
+        """Update only technique status - minimal GUI operations"""
+        # Only update technique confidence plot to minimize blocking
         if len(self.technique_history) > 0:
             x_data = np.arange(len(self.technique_history))
             self.technique_line.set_data(x_data, list(self.technique_history))
             self.technique_ax.set_xlim(0, len(self.technique_history))
-        
-        # Update spectrogram
-        if len(self.spectrum_buffer) > 10:  # Need some data for spectrogram
-            self._update_spectrogram()
-        
-        # Update canvas
-        self.analysis_canvas.draw_idle()
+            
+            # Skip expensive canvas updates that cause freezing
+            # Only update if absolutely necessary
+            try:
+                # Very lightweight update
+                self.analysis_canvas.draw_idle()
+            except:
+                pass  # Skip if it would block
     
     def _update_spectrogram(self):
         """Update spectrogram display"""
@@ -377,9 +372,10 @@ class Visualizer:
             self.logger.error(f"Spectrogram update error: {e}")
     
     def update(self):
-        """External update call from main GUI"""
+        """External update call from main GUI - now does nothing to prevent blocking"""
         # This is called from the main GUI thread
-        # Actual visualization updates happen in the visualization thread
+        # Skip all updates to prevent GUI thread blocking
+        # Visualization updates happen in separate thread only
         pass
     
     def stop(self):

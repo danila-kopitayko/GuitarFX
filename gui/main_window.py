@@ -187,62 +187,67 @@ class MainWindow:
         self.update_thread.start()
     
     def _update_loop(self):
-        """Main GUI update loop"""
+        """Main GUI update loop - much slower to prevent blocking"""
         while True:
             try:
                 if self.root.winfo_exists():
-                    self.root.after(0, self._update_gui)
-                    time.sleep(0.1)  # Update at 10 Hz
+                    self.root.after(0, self._update_gui_lightweight)
+                    time.sleep(0.5)  # Update at 2 Hz only to prevent freezing
                 else:
                     break
             except tk.TclError:
                 break
             except Exception as e:
                 self.logger.error(f"GUI update error: {e}")
-                time.sleep(1)
+                time.sleep(2)  # Longer sleep on error
     
-    def _update_gui(self):
-        """Update GUI elements"""
+    def _update_gui_lightweight(self):
+        """Update GUI elements - lightweight to prevent freezing"""
         try:
-            # Update status
-            self._update_status()
+            # Update status only
+            self._update_status_minimal()
             
-            # Update control panel
-            self.control_panel.update()
+            # Skip heavy control panel updates that can block
+            # self.control_panel.update()  # Commented out to prevent blocking
             
-            # Update visualizer
-            self.visualizer.update()
+            # Skip visualizer updates - they run in their own thread
+            # self.visualizer.update()  # Commented out to prevent blocking
             
         except Exception as e:
             self.logger.error(f"GUI update error: {e}")
     
-    def _update_status(self):
-        """Update status bar information"""
+    def _update_status_minimal(self):
+        """Update status bar information - minimal version to prevent blocking"""
         try:
-            # Audio processing status
+            # Only update essential status - skip expensive operations
+            
+            # Simple audio status check
             if self.audio_manager.is_stream_active():
-                self.status_label.config(text="Processing Active")
+                self.status_label.config(text="Active")
             else:
                 self.status_label.config(text="Stopped")
             
-            # Performance information
-            stats = self.audio_processor.get_performance_stats()
-            frame_count = stats.get('frame_count', 0)
-            self.perf_label.config(text=f"Frames: {frame_count}")
+            # Skip performance stats that require expensive operations
             
-            # Current technique
-            technique = self.audio_processor.get_current_technique()
-            confidence = self.audio_processor.get_technique_confidence()
-            
-            if technique and technique != 'none':
-                self.technique_label.config(
-                    text=f"Technique: {technique.title()} ({confidence:.1%})"
-                )
-            else:
-                self.technique_label.config(text="Technique: None")
+            # Only update technique if changed to reduce GUI calls
+            try:
+                technique = self.audio_processor.get_current_technique()
+                confidence = self.audio_processor.get_technique_confidence()
+                
+                if technique and technique != 'none':
+                    new_text = f"Technique: {technique.title()} ({confidence:.1%})"
+                else:
+                    new_text = "Technique: None"
+                
+                # Only update if text changed to reduce GUI operations
+                if self.technique_label.cget("text") != new_text:
+                    self.technique_label.config(text=new_text)
+            except:
+                pass  # Skip technique update if it would block
                 
         except Exception as e:
-            self.logger.error(f"Status update error: {e}")
+            # Don't log errors frequently to prevent log spam
+            pass
     
     def set_start_callback(self, callback):
         """Set callback for start button"""

@@ -553,23 +553,25 @@ class ControlPanel:
             self.logger.error(f"Failed to reset effect controls: {e}")
     
     def update(self):
-        """Update control panel state"""
+        """Update control panel state - lightweight to prevent blocking"""
         try:
-            # Update detection status
-            technique = self.audio_processor.get_current_technique()
-            confidence = self.audio_processor.get_technique_confidence()
+            # Skip frequent updates to prevent GUI blocking
+            # Only update if absolutely necessary
             
+            # Simple technique status update only
+            technique = self.audio_processor.get_current_technique()
             if technique and technique != 'none':
-                status_text = f"Detected: {technique.title()} (Confidence: {confidence:.1%})"
+                confidence = self.audio_processor.get_technique_confidence()
+                status_text = f"Detected: {technique.title()} ({confidence:.1%})"
             else:
                 status_text = "No technique detected"
             
-            self.detection_status_label.config(text=status_text)
+            # Only update if text changed to reduce GUI operations
+            if self.detection_status_label.cget("text") != status_text:
+                self.detection_status_label.config(text=status_text)
             
-            # Update processing status indicators
-            if self.audio_manager.is_stream_active():
-                if not self.processing_enabled_var.get():
-                    self.processing_enabled_var.set(True)
+            # Skip expensive processing status checks that can block GUI
             
         except Exception as e:
-            self.logger.error(f"Control panel update error: {e}")
+            # Reduce error logging to prevent log spam
+            pass

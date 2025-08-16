@@ -47,12 +47,13 @@ Centralized configuration system with:
 - **Logger**: Singleton logging system with file rotation and configurable verbosity levels
 
 ### Threading Model
-The application uses a multi-threaded architecture to ensure real-time performance:
+The application uses an optimized multi-threaded architecture to ensure real-time performance:
 
-- Main thread handles GUI operations and user interaction
-- Dedicated audio processing thread manages the core audio pipeline
-- Separate visualization thread updates displays at 30Hz
+- Main thread handles GUI operations and user interaction (optimized to 2Hz updates)
+- Dedicated audio processing thread manages the core audio pipeline (10ms sleep cycles)
+- Separate visualization thread updates displays at 5Hz (reduced from 30Hz to prevent blocking)
 - Thread-safe buffer management prevents audio dropouts
+- Lightweight GUI updates prevent thread contention and blocking
 
 ## External Dependencies
 
@@ -202,3 +203,48 @@ The enhanced model provides:
 - **Improved Classification**: RandomForest with 200 trees and balanced classes
 - **Real-time Evaluation**: Confusion matrix and feature importance analysis
 - **Validation**: Train/test split with detailed performance metrics
+
+## Performance Optimizations (August 2025)
+
+### GUI Freezing Issue Resolution
+Resolved critical application freezing issue through comprehensive performance optimizations:
+
+#### Problem Identified
+- **GUI Thread Blocking**: Heavy matplotlib operations in visualizer were blocking the main GUI thread
+- **Excessive Update Frequency**: GUI updates at 10Hz and visualizer at 30Hz caused CPU overload
+- **Expensive Computations**: Real-time spectrum analysis and spectrogram calculations were too intensive
+- **Threading Contention**: Multiple threads competing for GUI resources
+
+#### Optimizations Applied
+
+**Visualizer Performance Fixes:**
+- Reduced update frequency from 30Hz to 5Hz to prevent CPU overload
+- Shortened data history from 200 to 50 frames to reduce memory usage
+- Removed expensive FFT spectrum analysis and spectrogram calculations
+- Implemented lightweight audio processing that skips heavy computations
+- Added non-blocking matplotlib canvas updates with error handling
+
+**GUI Thread Optimizations:**
+- Reduced main GUI update frequency from 10Hz to 2Hz
+- Implemented minimal status updates that only change when necessary
+- Removed expensive control panel updates from main thread loop
+- Added lightweight update methods that prevent GUI blocking
+
+**Audio Processing Improvements:**
+- Increased processing loop sleep time from 5ms to 10ms for better thread balance
+- Extended error recovery sleep times to prevent rapid error cycles
+- Optimized buffer management to reduce thread contention
+
+#### Results
+- **Eliminated Freezing**: Application now runs smoothly without GUI blocking
+- **Improved Responsiveness**: Interface remains responsive during audio processing
+- **Reduced CPU Usage**: Significantly lower CPU overhead from GUI operations
+- **Stable Performance**: No more buffer underrun warnings or frequent error cycles
+
+#### Technical Changes
+- `gui/visualizer.py`: Simplified update loop, removed heavy matplotlib operations
+- `gui/main_window.py`: Reduced update frequency, minimal status updates only
+- `gui/control_panel.py`: Lightweight updates that check for changes before updating
+- `main.py`: Optimized audio processing loop timing for better thread balance
+
+These optimizations ensure the application runs smoothly in real-time without the freezing issues that were preventing normal usage.

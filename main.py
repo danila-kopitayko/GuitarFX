@@ -124,19 +124,19 @@ class GuitarEffectsApp:
             self.logger.error(f"Error stopping processing: {e}")
     
     def _processing_loop(self):
-        """Main audio processing loop"""
+        """Main audio processing loop - optimized to prevent GUI blocking"""
         while self.running:
             try:
                 # Process one audio frame
                 self.audio_processor.process_frame()
                 
-                # Small sleep to prevent CPU overload and allow GUI updates
-                time.sleep(0.005)
+                # Longer sleep to prevent CPU overload and allow GUI updates
+                time.sleep(0.01)  # Increased from 0.005 to 0.01 for better GUI responsiveness
                 
             except Exception as e:
                 self.logger.error(f"Processing error: {e}")
                 # Continue processing despite errors
-                time.sleep(0.05)
+                time.sleep(0.1)  # Increased error sleep time
     
     def run(self):
         """Run the main application"""
