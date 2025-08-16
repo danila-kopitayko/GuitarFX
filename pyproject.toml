@@ -3,4 +3,12 @@ name = "repl-nix-workspace"
 version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "joblib>=1.5.1",
+    "librosa>=0.11.0",
+    "matplotlib>=3.10.5",
+    "numpy>=2.2.6",
+    "pyaudio>=0.2.14",
+    "scikit-learn>=1.7.1",
+    "scipy>=1.16.1",
+]
